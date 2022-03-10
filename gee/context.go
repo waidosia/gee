@@ -15,6 +15,9 @@ type Context struct {
 	Method     string
 	Params     map[string]string
 	StatusCode int
+	handlers   []HandlerFunc
+	index      int
+	engine     *Engine
 }
 
 func NewContext(w http.ResponseWriter, req *http.Request) *Context {
@@ -23,11 +26,17 @@ func NewContext(w http.ResponseWriter, req *http.Request) *Context {
 		Req:    req,
 		Path:   req.URL.Path,
 		Method: req.Method,
+		index:  -1,
 	}
 }
 
 func (c *Context) PostForm(key string) string {
 	return c.Req.FormValue(key)
+}
+
+func (c *Context) Fail(code int, err string) {
+	c.index = len(c.handlers)
+	c.JSON(code, H{"message": err})
 }
 
 func (c *Context) Query(key string) string {
@@ -63,13 +72,23 @@ func (c *Context) Data(code int, data []byte) {
 	c.Write.Write(data)
 }
 
-func (c *Context) HTML(code int, html string) {
+func (c *Context) HTML(code int, name string, data interface{}) {
 	c.SetHeader("Content-Type", "text/html")
 	c.Status(code)
-	c.Write.Write([]byte(html))
+	if err := c.engine.htmlTemplates.ExecuteTemplate(c.Write, name, data); err != nil {
+		c.Fail(500, err.Error())
+	}
 }
 
 func (c *Context) Param(key string) string {
 	value, _ := c.Params[key]
 	return value
+}
+
+func (c *Context) Next() {
+	c.index++
+	s := len(c.handlers)
+	for ; c.index < s; c.index++ {
+		c.handlers[c.index](c)
+	}
 }
