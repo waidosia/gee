@@ -28,14 +28,12 @@ func main() {
 	})
 	v1 := r.Group("/v1")
 	v1.Use(middle())
-	{
-		v1.GET("/hello", func(c *gee.Context) {
-			c.String(http.StatusOK, "Hello v1")
-		})
-	}
 
-// 我要测试·
-	
-	
+	v1.GET("/hello", func(c *gee.Context) {
+		c.String(http.StatusOK, "Hello v1")
+	})
+
+	// 我要测试·
+
 	r.Run(":8080")
 }
